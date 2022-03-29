@@ -5,8 +5,8 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: jpires-p <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/03/05 00:09:07 by jpires-p          #+#    #+#             */
-/*   Updated: 2022/03/11 20:46:58 by jpires-p         ###   ########.fr       */
+/*   Created: 2022/03/16 20:00:02 by jpires-p          #+#    #+#             */
+/*   Updated: 2022/03/29 21:01:14 by jpires-p         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,9 +18,7 @@ size_t	ft_strlen(const char *s)
 
 	i = 0;
 	while (s[i] != '\0')
-	{
 		i++;
-	}
 	return (i);
 }
 
@@ -80,26 +78,31 @@ char	*ft_strjoin(char const *s1, char const *s2)
 	return (dst);
 }
 
-char	*ft_realoc_or_free(char *tmp, char *src, char **strs)
+char	*ft_realloc_strjoin(char *tmp, char *src)
 {
-	char			*dst;
-	unsigned int	i;
+	char	*dst;
 
-	if (strs && !src && !tmp)
+	dst = (char *) NULL;
+	if (tmp == (char *) NULL && src != (char *) NULL)
 	{
-		i = 0;
-		while (strs[i])
-		{
-			free(strs[i]);
-			i++;
-		}
-		free(strs);
-		return ((char *) NULL);
+		dst = ft_strjoin("", src);
+		free(src);
+		src = (char *) NULL;
 	}
-	if (!src || !tmp)
-		return ((char *) NULL);
-	dst = ft_strjoin(tmp, src);
-	free(tmp);
+	else if (tmp != (char *) NULL && src != (char *) NULL)
+	{
+		dst = ft_strjoin(tmp, src);
+		free(tmp);
+		tmp = (char *) NULL;
+		free(src);
+		src = (char *) NULL;
+	}
+	else if (tmp != (char *) NULL && src == (char *) NULL)
+	{
+		dst = ft_strjoin(tmp, "");
+		free(tmp);
+		tmp = (char *) NULL;
+	}
 	return (dst);
 }
 

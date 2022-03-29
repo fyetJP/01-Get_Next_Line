@@ -5,51 +5,41 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: jpires-p <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/03/05 00:10:17 by jpires-p          #+#    #+#             */
-/*   Updated: 2022/03/14 18:56:25 by jpires-p         ###   ########.fr       */
+/*   Created: 2022/03/16 20:00:08 by jpires-p          #+#    #+#             */
+/*   Updated: 2022/03/29 21:05:47 by jpires-p         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line.h"
 
-static char	*ft_read_to_str(int fd);
-
-static void	ft_process_lines(int fd, char ***file_strs, char *src);
-
-static void	ft_save_lines(char **strs, char *src, unsigned int num_nl);
-
-static int	ft_check_final_str(char ***fs, int fd, int size_of_strs);
-
 char	*get_next_line(int fd)
 {
-	char		*temp;
-	static char	***final_str;
+	static char		**buffer;
+	char			*str_w_nl;
+	unsigned int	i;
 
-	if (read(fd, 0, 0) == -1 || fd < 0 || fd > 1024 || BUFFER_SIZE < 1)
+	if (read(fd, 0, 0) == -1 || fd < 0 || BUFFER_SIZE < 1)
 		return ((char *) NULL);
-	temp = (char *) NULL;
-	if (!final_str)
+	if (buffer == (char **) NULL)
 	{
-		final_str = (char ***)malloc(sizeof(char **) * (MAX_FD + 1));
-		final_str[MAX_FD] = (char **) NULL;
+		buffer = (char **)malloc(sizeof(char *) * (MAX_FD + 1));
+		i = -1;
+		while (++i <= MAX_FD)
+			buffer[i] = (char *) NULL;
 	}
-	if (ft_check_final_str(final_str, fd, MAX_FD) == 1)
-		return (*final_str[fd]);
-	temp = ft_read_to_str(fd);
-	if (!temp)
+	buffer[fd] = ft_realloc_strjoin(buffer[fd], ft_read_to_str(fd));
+	str_w_nl = ft_process_line(buffer[fd]);
+	if (ft_check_null_and_free(str_w_nl, buffer, fd) == 0)
 	{
-		if (final_str[fd] && *final_str[fd])
-			return (*final_str[fd]);
-		return (temp);
-	}
-	ft_process_lines(fd, final_str, temp);
-	free(temp);
-	if (!*final_str[fd])
+		free(buffer);
+		buffer = (char **) NULL;
 		return ((char *) NULL);
-	return (*final_str[fd]);
+	}
+	buffer[fd] = ft_get_buff_after_nl(buffer[fd], ft_strlen(str_w_nl));
+	return (str_w_nl);
 }
 
-static char	*ft_read_to_str(int fd)
+char	*ft_read_to_str(int fd)
 {
 	ssize_t	b_read;
 	char	*temp;
@@ -62,105 +52,79 @@ static char	*ft_read_to_str(int fd)
 		buff = (char *)malloc(sizeof(char) * (BUFFER_SIZE + 1));
 		b_read = read(fd, buff, BUFFER_SIZE);
 		buff[b_read] = '\0';
-		if (b_read <= 0 && !temp)
+		if (b_read <= 0 && temp == (char *) NULL)
 		{
 			free(buff);
 			return ((char *) NULL);
 		}
-		if (!temp)
-			temp = ft_strjoin("", buff);
-		else
-			temp = ft_realoc_or_free(temp, buff, (char **) NULL);
-		free(buff);
+		temp = ft_realloc_strjoin(temp, buff);
 		if (ft_strchr(temp, '\n'))
 			return (temp);
 	}
 	return (temp);
 }
 
-static void	ft_process_lines(int fd, char ***file_strs, char *src)
+char	*ft_process_line(const char *str)
 {
-	unsigned int	i[2];
-	char			*ptr;
+	char			*dst;
+	unsigned int	i;
 
-	ptr = (char *) NULL;
-	if (!file_strs[fd] || (!*file_strs[fd]))
-		ptr = ft_strjoin("", src);
-	else
-		ptr = ft_strjoin(*file_strs[fd], src);
-	i[0] = 0;
-	i[1] = 0;
-	while (ptr[i[0]] != '\0')
-	{
-		if (ptr[i[0]] == '\n')
-			i[1]++;
-		i[0]++;
-	}
-	if (!file_strs[fd])
-		file_strs[fd] = (char **)malloc(sizeof(char *) * (i[1] + 2));
-	else
-	{
-		ft_realoc_or_free((char *) NULL, (char *) NULL, file_strs[fd]);
-		file_strs[fd] = (char **)malloc(sizeof(char *) * (i[1] + 2));
-	}
-	ft_save_lines(file_strs[fd], ptr, i[1]);
-	free(ptr);
-}
-
-static void	ft_save_lines(char **strs, char *src, unsigned int num_nl)
-{
-	unsigned int	i[4];
-
-	i[0] = 0;
-	i[1] = 0;
-	i[2] = 0;
-	while (i[0] <= (num_nl + 1))
-		strs[i[0]++] = (char *) NULL;
-	i[0] = num_nl;
-	i[0] = 0;
-	while (src[i[0]] != '\0')
-	{
-		if (src[i[0]] == '\n')
-		{
-			if ((i[0] - i[2]) == 0)
-				i[3] = 1;
-			else
-				i[3] = (i[0] - i[2]) + 1;
-			strs[i[1]] = ft_substr(src, i[2], i[3]);
-			i[2] = i[0] + 1;
-			i[1]++;
-		}
-		i[0]++;
-	}
-	if (!strs[i[1]] && (i[0] - i[2]) > 0)
-		strs[i[1]] = ft_substr(src, i[2], i[0] - i[2]);
-}
-
-static int	ft_check_final_str(char ***fs, int fd, int size_of_strs)
-{
-	int	i;
-
-	if (!fs[size_of_strs])
-	{
-		fs[size_of_strs] = (char **)malloc(sizeof(char *));
-		while (--size_of_strs >= 0)
-			fs[size_of_strs] = (char **) NULL;
-	}
-	if (!fs[fd])
-		return (0);
-	if (fs[fd][1] == (char *) NULL)
-	{
-		fs[fd][0] = (char *) NULL;
-		return (0);
-	}
+	if (str == (char *) NULL || *str == '\0')
+		return ((char *) NULL);
+	dst = (char *) NULL;
 	i = 0;
-	while (fs[fd][i + 1])
+	while (str[i] != '\0')
 	{
-		fs[fd][i] = ft_substr(fs[fd][i + 1], 0, ft_strlen(fs[fd][i + 1]));
-		free(fs[fd][++i]);
+		if (str[i] == '\n')
+		{
+			dst = ft_substr(str, 0, i + 1);
+			return (dst);
+		}
+		i++;
 	}
-	fs[fd][i] = (char *) NULL;
-	if (!ft_strchr(*fs[fd], '\n'))
+	dst = ft_substr(str, 0, i);
+	return (dst);
+}
+
+char	*ft_get_buff_after_nl(char *str_to_trim, unsigned int size_to_trim)
+{
+	char			*str;
+	unsigned int	size_of_str;
+
+	if (str_to_trim == (char *) NULL || *str_to_trim == '\0'
+		|| size_to_trim < 1)
+	{
+		if (str_to_trim != (char *) NULL)
+			free(str_to_trim);
+		return ((char *) NULL);
+	}
+	str = (char *) NULL;
+	size_of_str = ft_strlen(str_to_trim);
+	str = ft_substr(str_to_trim, size_to_trim, (size_of_str - size_to_trim));
+	free(str_to_trim);
+	str_to_trim = (char *) NULL;
+	return (str);
+}
+
+int	ft_check_null_and_free(char *p, char **p2p, int fd)
+{
+	unsigned int	i;
+
+	if (p == (char *) NULL || *p2p[fd] == '\0')
+	{
+		free(p);
+		p = (char *) NULL;
+		i = 0;
+		while (i <= MAX_FD)
+		{
+			if (p2p[i] != (char *) NULL)
+			{
+				free(p2p[i]);
+				p2p[i] = (char *) NULL;
+			}
+			i++;
+		}
 		return (0);
+	}
 	return (1);
 }
